@@ -1,0 +1,966 @@
+import { useState } from “react”;
+
+const CREDENTIALS = {
+email: “emmett.cahill@novabanque.com”,
+password: “Nova2024!”,
+answers: { dob: “01/15/1988”, nickname: “em”, motherMaiden: “sullivan”, firstPet: “biscuit”, hometown: “dublin” },
+};
+const SUPPORT_EMAIL = “Personalspace90@icloud.com”;
+const USER = { name: “Emmett Cahill”, first: “Emmett”, initials: “EC” };
+
+const ACCOUNTS = [
+{ id: 1, name: “Current”,    number: “4821”, balance: 340567.00, type: “Current Account”,  color1: “#1252c9”, color2: “#38a4f8” },
+{ id: 2, name: “Savings”,    number: “9034”, balance: 480000.00, type: “Savings Account”,  color1: “#065f46”, color2: “#10b981” },
+{ id: 3, name: “Investment”, number: “2210”, balance: 120000.00, type: “Investment”,        color1: “#4c1d95”, color2: “#8b5cf6” },
+];
+
+const SECURITY_QS = [
+{ id: “dob”,          q: “What is your date of birth?”,         ph: “MM/DD/YYYY” },
+{ id: “nickname”,     q: “What is your childhood nickname?”,     ph: “Your nickname” },
+{ id: “motherMaiden”, q: “What is your mother’s maiden name?”,   ph: “Maiden name” },
+{ id: “firstPet”,     q: “What was the name of your first pet?”, ph: “Pet’s name” },
+{ id: “hometown”,     q: “What city were you born in?”,          ph: “City name” },
+];
+
+const TRANSACTIONS = [
+{ id:1,  name:“Salary Deposit”,       cat:“Income”,        date:“Mar 9”,  time:“09:15 AM”, amount:42000.00,  icon:“💼”, acc:1 },
+{ id:2,  name:“Dividend Payment”,     cat:“Income”,        date:“Mar 5”,  time:“02:30 PM”, amount:3200.00,   icon:“📈”, acc:3 },
+{ id:3,  name:“Wire Transfer In”,     cat:“Income”,        date:“Feb 27”, time:“11:00 AM”, amount:15000.00,  icon:“🏦”, acc:1 },
+{ id:4,  name:“Sotheby’s Auction”,    cat:“Investment”,    date:“Mar 6”,  time:“04:45 PM”, amount:-8500.00,  icon:“🖼”,  acc:3 },
+{ id:5,  name:“The Peninsula Hotel”,  cat:“Travel”,        date:“Mar 2”,  time:“06:00 PM”, amount:-1840.00,  icon:“🏨”, acc:1 },
+{ id:6,  name:“Apple Store”,          cat:“Shopping”,      date:“Feb 28”, time:“03:20 PM”, amount:-2399.00,  icon:“🍎”, acc:1 },
+{ id:7,  name:“Whole Foods”,          cat:“Groceries”,     date:“Mar 8”,  time:“10:10 AM”, amount:-187.42,   icon:“🛒”, acc:1 },
+{ id:8,  name:“Uber Black”,           cat:“Transport”,     date:“Mar 7”,  time:“08:55 AM”, amount:-58.50,    icon:“🚗”, acc:1 },
+{ id:9,  name:“Netflix”,              cat:“Entertainment”, date:“Mar 10”, time:“12:00 AM”, amount:-15.99,    icon:“🎬”, acc:1 },
+{ id:10, name:“Spotify Premium”,      cat:“Entertainment”, date:“Mar 4”,  time:“12:00 AM”, amount:-9.99,     icon:“🎵”, acc:1 },
+];
+
+const fmt = (n) => n.toLocaleString(“en-US”, { style: “currency”, currency: “USD” });
+const greeting = () => { const h = new Date().getHours(); return h<12?“Good Morning”:h<17?“Good Afternoon”:“Good Evening”; };
+
+// ─── STYLES ─────────────────────────────────────────────────────────
+const G = `
+@import url(‘https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap’);
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #08101e; }
+::-webkit-scrollbar { display: none; }
+
+.shell {
+max-width: 430px; margin: 0 auto; min-height: 100vh;
+background: #0c1220; font-family: ‘Sora’, sans-serif;
+display: flex; flex-direction: column; position: relative; overflow-x: hidden;
+}
+
+/* ── AUTH ── */
+.auth-bg {
+max-width: 430px; margin: 0 auto; min-height: 100vh;
+background: #08101e; font-family: ‘Sora’, sans-serif;
+display: flex; flex-direction: column; align-items: center;
+justify-content: center; padding: 28px 22px; position: relative;
+}
+.glow { position:absolute; width:500px; height:500px; border-radius:50%;
+background:radial-gradient(circle,rgba(18,82,201,.22) 0%,transparent 65%);
+top:-120px; left:50%; transform:translateX(-50%); pointer-events:none; }
+.glow2 { position:absolute; width:300px; height:300px; border-radius:50%;
+background:radial-gradient(circle,rgba(139,92,246,.12) 0%,transparent 65%);
+bottom:-80px; right:-60px; pointer-events:none; }
+.auth-box {
+width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+border-radius:28px; padding:34px 26px; position:relative; z-index:2;
+box-shadow:0 32px 80px rgba(0,0,0,.6);
+}
+.ai { width:100%; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1);
+border-radius:16px; padding:15px 18px; color:#fff; font-family:‘Sora’,sans-serif;
+font-size:15px; outline:none; transition:all .2s; }
+.ai::placeholder { color:rgba(255,255,255,.22); }
+.ai:focus { border-color:#4a90f7; background:rgba(74,144,247,.1); box-shadow:0 0 0 4px rgba(74,144,247,.15); }
+.ai.err { border-color:#f87171; box-shadow:0 0 0 3px rgba(248,113,113,.15); }
+.ab { width:100%; background:linear-gradient(135deg,#1252c9,#4a90f7); color:#fff; border:none;
+border-radius:16px; padding:16px; font-family:‘Sora’,sans-serif; font-size:15px;
+font-weight:700; cursor:pointer; transition:all .22s; letter-spacing:.2px;
+box-shadow:0 8px 24px rgba(18,82,201,.45); }
+.ab:hover { transform:translateY(-2px); box-shadow:0 12px 32px rgba(18,82,201,.55); }
+.ab:active { transform:translateY(0); }
+.ab:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* ── CARD ── */
+.bal-card {
+border-radius:26px; padding:26px 24px; position:relative; overflow:hidden;
+margin:0 18px; box-shadow:0 20px 60px rgba(0,0,0,.45); cursor:pointer;
+user-select:none; transition:transform .2s;
+}
+.bal-card:active { transform:scale(.985); }
+.bal-card::before { content:’’; position:absolute; width:240px; height:240px; border-radius:50%;
+background:rgba(255,255,255,.09); right:-60px; top:-70px; pointer-events:none; }
+.bal-card::after { content:’’; position:absolute; width:150px; height:150px; border-radius:50%;
+background:rgba(255,255,255,.05); left:-30px; bottom:-50px; pointer-events:none; }
+
+/* ── QUICK ACTION ── */
+.qa { display:flex; flex-direction:column; align-items:center; gap:9px;
+background:none; border:none; cursor:pointer; flex:1; font-family:‘Sora’,sans-serif;
+padding:4px 0; transition:transform .15s; }
+.qa:active { transform:scale(.92); }
+.qa-icon { width:58px; height:58px; border-radius:20px; display:flex; align-items:center;
+justify-content:center; font-size:22px; transition:all .18s; position:relative; }
+.qa-lbl { font-size:12px; font-weight:600; color:#7a8fb0; }
+
+/* ── BOTTOM NAV ── */
+.bnav {
+position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+width:100%; max-width:430px; background:#0f1828;
+border-top:1px solid rgba(255,255,255,.07);
+display:flex; align-items:center; justify-content:space-around;
+padding:10px 4px 22px; z-index:100; box-shadow:0 -10px 40px rgba(0,0,0,.35);
+}
+.bnav-btn { display:flex; flex-direction:column; align-items:center; gap:5px;
+background:none; border:none; cursor:pointer; font-family:‘Sora’,sans-serif;
+padding:7px 18px; border-radius:18px; transition:all .18s; }
+.bnav-btn:active { transform:scale(.9); }
+.bnav-btn.on { background:rgba(74,144,247,.14); }
+.bnav-icon { font-size:21px; line-height:1; }
+.bnav-lbl { font-size:10px; font-weight:600; color:#3a4a6a; letter-spacing:.3px; }
+.bnav-btn.on .bnav-lbl { color:#4a90f7; }
+
+/* ── DRAWER ── */
+.ov { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:200; backdrop-filter:blur(6px); }
+.drawer { position:fixed; top:0; left:0; bottom:0; width:290px; background:#0f1828;
+z-index:201; box-shadow:12px 0 60px rgba(0,0,0,.6);
+transform:translateX(-100%); transition:transform .32s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+.drawer.on { transform:translateX(0); }
+.dmn { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:16px;
+cursor:pointer; transition:all .15s; color:#7a8fb0; font-size:14px; font-weight:600;
+border:none; background:none; width:100%; text-align:left; font-family:‘Sora’,sans-serif; }
+.dmn:hover { background:rgba(255,255,255,.06); color:#c8d8f8; }
+.dmn.on { background:rgba(74,144,247,.14); color:#4a90f7; }
+.dmn:active { transform:scale(.97); }
+
+/* ── MISC ── */
+.sec { font-size:17px; font-weight:700; color:#fff; }
+.dk { background:#111827; border-radius:22px; padding:20px; }
+.trow { display:flex; align-items:center; gap:13px; padding:14px 0;
+border-bottom:1px solid rgba(255,255,255,.05); cursor:pointer; transition:opacity .15s; }
+.trow:last-child { border-bottom:none; }
+.trow:active { opacity:.7; }
+.ticon { width:46px; height:46px; border-radius:15px; background:rgba(255,255,255,.07);
+display:flex; align-items:center; justify:center; font-size:21px; flex-shrink:0; align-items:center; justify-content:center; }
+.fl { display:block; font-size:11px; font-weight:700; color:#3a4a6a; letter-spacing:.9px; margin-bottom:8px; }
+.fi { width:100%; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.09);
+border-radius:15px; padding:15px 16px; color:#fff; font-family:‘Sora’,sans-serif;
+font-size:15px; outline:none; transition:all .2s; }
+.fi::placeholder { color:rgba(255,255,255,.2); }
+.fi:focus { border-color:#4a90f7; background:rgba(74,144,247,.08); box-shadow:0 0 0 3px rgba(74,144,247,.15); }
+.pill { display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; }
+.modal-sheet { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:300;
+display:flex; align-items:flex-end; justify-content:center; }
+.sheet { background:#111827; border-radius:28px 28px 0 0; width:100%; max-width:430px;
+border:1px solid rgba(255,255,255,.08); padding:0 22px 52px;
+box-shadow:0 -20px 60px rgba(0,0,0,.5); }
+.sheet-handle { width:40px; height:4px; background:rgba(255,255,255,.15); border-radius:4px; margin:16px auto 26px; }
+.bigbtn { width:100%; border:none; border-radius:18px; padding:17px; font-family:‘Sora’,sans-serif;
+font-size:16px; font-weight:800; cursor:pointer; transition:all .22s; letter-spacing:.2px; }
+.bigbtn:active { transform:scale(.97); }
+.ghost-btn { background:rgba(255,255,255,.07); border:1.5px solid rgba(255,255,255,.1);
+border-radius:15px; padding:13px 18px; color:#7a8fb0; font-size:14px; font-weight:600;
+cursor:pointer; font-family:‘Sora’,sans-serif; transition:all .18s; }
+.ghost-btn:hover { background:rgba(255,255,255,.11); color:#c8d8f8; }
+.ghost-btn:active { transform:scale(.96); }
+.ham { width:42px; height:42px; background:rgba(255,255,255,.07); border-radius:14px;
+display:flex; flex-direction:column; align-items:center; justify-content:center;
+gap:5px; border:none; cursor:pointer; transition:all .18s; flex-shrink:0; }
+.ham:hover { background:rgba(255,255,255,.12); }
+.ham:active { transform:scale(.92); }
+.hline { display:block; height:2px; background:#fff; border-radius:2px; transition:all .2s; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+.fu { animation:fadeUp .3s ease both; }
+@keyframes popIn { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+.pop { animation:popIn .36s ease; }
+@keyframes slideCard { from{opacity:0;transform:translateX(28px)} to{opacity:1;transform:none} }
+.sc { animation:slideCard .28s ease both; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.pulse { animation:pulse 1.5s ease infinite; }
+
+.tag { display:inline-flex; align-items:center; padding:5px 14px; border-radius:30px;
+font-size:12px; font-weight:700; gap:5px; }
+`;
+
+// ─── LOGO ───────────────────────────────────────────────────────────
+function Logo({ size = 52 }) {
+return (
+<div style={{ display:“flex”, alignItems:“center”, gap:11, justifyContent:“center” }}>
+<div style={{ width:size, height:size, background:“linear-gradient(135deg,#1252c9,#4a90f7)”, borderRadius:size*0.32, display:“flex”, alignItems:“center”, justifyContent:“center”, boxShadow:“0 8px 28px rgba(18,82,201,.55)”, flexShrink:0 }}>
+<span style={{ color:”#fff”, fontWeight:800, fontSize:size*0.4 }}>N</span>
+</div>
+<div>
+<div style={{ color:”#fff”, fontSize:size*0.44, fontWeight:800, letterSpacing:”-.5px”, lineHeight:1.1 }}>NovaBanque</div>
+<div style={{ color:”#3a5080”, fontSize:size*0.22, fontWeight:600, letterSpacing:”.5px” }}>PRIVATE BANKING</div>
+</div>
+</div>
+);
+}
+
+// ─── LOGIN ──────────────────────────────────────────────────────────
+function LoginScreen({ onNext }) {
+const [email, setEmail] = useState(””);
+const [pass, setPass] = useState(””);
+const [show, setShow] = useState(false);
+const [err, setErr] = useState(””);
+const [loading, setLoading] = useState(false);
+
+const submit = () => {
+if (!email || !pass) { setErr(“Please fill in both fields to continue.”); return; }
+setLoading(true); setErr(””);
+setTimeout(() => {
+setLoading(false);
+if (email.trim().toLowerCase() === CREDENTIALS.email && pass === CREDENTIALS.password) onNext();
+else setErr(“Incorrect email or password. Please try again.”);
+}, 1100);
+};
+
+return (
+<div className="auth-bg">
+<style>{G}</style>
+<div className="glow" /><div className="glow2" />
+
+```
+  <div style={{ marginBottom:36, position:"relative", zIndex:2 }} className="fu">
+    <Logo size={48} />
+  </div>
+
+  <div className="auth-box fu" style={{ animationDelay:".08s" }}>
+    <h2 style={{ color:"#fff", fontSize:24, fontWeight:800, marginBottom:5 }}>Welcome back 👋</h2>
+    <p style={{ color:"#3a5080", fontSize:14, marginBottom:28, lineHeight:1.5 }}>Sign in to access your account securely.</p>
+
+    <div style={{ marginBottom:16 }}>
+      <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#3a5080", letterSpacing:.9, marginBottom:9 }}>EMAIL ADDRESS</label>
+      <input className={"ai"+(err?" err":"")} type="email" placeholder="your@email.com"
+        value={email} onChange={e=>{setEmail(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} />
+    </div>
+    <div style={{ marginBottom:8 }}>
+      <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#3a5080", letterSpacing:.9, marginBottom:9 }}>PASSWORD</label>
+      <div style={{ position:"relative" }}>
+        <input className={"ai"+(err?" err":"")} type={show?"text":"password"} placeholder="Enter your password"
+          value={pass} onChange={e=>{setPass(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} style={{ paddingRight:52 }} />
+        <button onClick={()=>setShow(v=>!v)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#3a5080", cursor:"pointer", fontSize:18, lineHeight:1 }}>{show?"🙈":"👁"}</button>
+      </div>
+    </div>
+
+    <div style={{ textAlign:"right", marginBottom:24 }}>
+      <span style={{ color:"#4a90f7", fontSize:13, cursor:"pointer", fontWeight:600 }}>Forgot password?</span>
+    </div>
+
+    {err && (
+      <div style={{ background:"rgba(248,113,113,.1)", border:"1px solid rgba(248,113,113,.28)", borderRadius:14, padding:"13px 16px", marginBottom:20, display:"flex", gap:10, alignItems:"flex-start" }}>
+        <span style={{ fontSize:16, flexShrink:0 }}>⚠️</span>
+        <span style={{ color:"#fca5a5", fontSize:13, lineHeight:1.5 }}>{err}</span>
+      </div>
+    )}
+
+    <button className="ab" onClick={submit} disabled={loading}>
+      {loading ? <span className="pulse">Signing in…</span> : "Sign In →"}
+    </button>
+
+    <div style={{ marginTop:24, display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ flex:1, height:1, background:"rgba(255,255,255,.06)" }} />
+      <span style={{ color:"#2a3a5a", fontSize:12 }}>Secured by 256-bit SSL</span>
+      <div style={{ flex:1, height:1, background:"rgba(255,255,255,.06)" }} />
+    </div>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─── SECURITY QUESTIONS ─────────────────────────────────────────────
+function SecurityScreen({ onSuccess }) {
+const [qs] = useState(() => […SECURITY_QS].sort(()=>Math.random()-.5).slice(0,3));
+const [step, setStep] = useState(0);
+const [ans, setAns] = useState(””);
+const [err, setErr] = useState(””);
+const [loading, setLoading] = useState(false);
+const [wrong, setWrong] = useState(0);
+
+const submit = () => {
+if (!ans.trim()) { setErr(“Please type your answer to continue.”); return; }
+setLoading(true); setErr(””);
+setTimeout(() => {
+setLoading(false);
+if (ans.trim().toLowerCase() === CREDENTIALS.answers[qs[step].id].toLowerCase()) {
+if (step < qs.length-1) { setStep(s=>s+1); setAns(””); }
+else onSuccess();
+} else {
+const w = wrong+1; setWrong(w);
+if (w >= 3) { setErr(“Too many failed attempts. Redirecting…”); setTimeout(()=>window.location.reload(), 2200); }
+else { setErr(`That doesn't match. You have ${3-w} attempt${3-w!==1?"s":""} remaining.`); setAns(””); }
+}
+}, 800);
+};
+
+return (
+<div className="auth-bg">
+<style>{G}</style>
+<div className="glow" />
+
+```
+  <div style={{ marginBottom:32, position:"relative", zIndex:2 }} className="fu">
+    <Logo size={44} />
+  </div>
+
+  <div className="auth-box fu" style={{ animationDelay:".06s" }}>
+    {/* Progress bar */}
+    <div style={{ display:"flex", gap:6, marginBottom:26 }}>
+      {qs.map((_,i) => (
+        <div key={i} style={{ flex:1, height:5, borderRadius:5,
+          background: i<step ? "#4a90f7" : i===step ? "linear-gradient(90deg,#4a90f7,#8b5cf6)" : "rgba(255,255,255,.08)",
+          transition:"all .3s", boxShadow: i<=step ? "0 0 8px rgba(74,144,247,.5)" : "none" }} />
+      ))}
+    </div>
+
+    <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:22 }}>
+      <div style={{ width:50, height:50, background:"rgba(74,144,247,.14)", borderRadius:16, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, border:"1px solid rgba(74,144,247,.28)", flexShrink:0 }}>🔐</div>
+      <div>
+        <h2 style={{ color:"#fff", fontSize:20, fontWeight:800, marginBottom:2 }}>Security Check</h2>
+        <p style={{ color:"#3a5080", fontSize:13 }}>Question {step+1} of {qs.length} — almost there!</p>
+      </div>
+    </div>
+
+    <div style={{ background:"rgba(74,144,247,.07)", borderRadius:18, padding:"18px 20px", marginBottom:24, border:"1px solid rgba(74,144,247,.15)" }}>
+      <p style={{ color:"#c8d8ff", fontSize:15, fontWeight:600, lineHeight:1.55 }}>{qs[step].q}</p>
+    </div>
+
+    <div style={{ marginBottom: err?14:24 }}>
+      <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#3a5080", letterSpacing:.9, marginBottom:9 }}>YOUR ANSWER</label>
+      <input className={"ai"+(err?" err":"")} placeholder={qs[step].ph}
+        value={ans} onChange={e=>{setAns(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} autoFocus />
+    </div>
+
+    {err && (
+      <div style={{ background:"rgba(248,113,113,.1)", border:"1px solid rgba(248,113,113,.28)", borderRadius:14, padding:"13px 16px", marginBottom:18, display:"flex", gap:10, alignItems:"flex-start" }}>
+        <span style={{ fontSize:16, flexShrink:0 }}>⚠️</span>
+        <span style={{ color:"#fca5a5", fontSize:13, lineHeight:1.5 }}>{err}</span>
+      </div>
+    )}
+
+    <button className="ab" onClick={submit} disabled={loading}>
+      {loading ? <span className="pulse">Checking…</span> : step<qs.length-1 ? "Next Question →" : "Access My Account →"}
+    </button>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─── SLIDE DRAWER ───────────────────────────────────────────────────
+function Drawer({ open, onClose, page, setPage, onSignOut }) {
+const items = [
+{ id:“Home”,     icon:“🏠”, label:“Home” },
+{ id:“Activity”, icon:“📊”, label:“Activity” },
+{ id:“Transfer”, icon:“✈️”, label:“Send Money”, locked:true },
+{ id:“Cards”,    icon:“💳”, label:“Cards” },
+{ id:“Profile”,  icon:“👤”, label:“Profile” },
+{ id:“Support”,  icon:“💬”, label:“Support” },
+];
+return (
+<>
+{open && <div className="ov" onClick={onClose} />}
+<div className={“drawer”+(open?” on”:””)}>
+<div style={{ padding:“52px 18px 20px”, borderBottom:“1px solid rgba(255,255,255,.06)” }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:12 }}>
+<div style={{ width:50, height:50, background:“linear-gradient(135deg,#1252c9,#4a90f7)”, borderRadius:“50%”, display:“flex”, alignItems:“center”, justifyContent:“center”, color:”#fff”, fontWeight:800, fontSize:17, flexShrink:0 }}>EC</div>
+<div>
+<div style={{ color:”#fff”, fontWeight:700, fontSize:15 }}>{USER.name}</div>
+<div style={{ color:”#3a5080”, fontSize:12, marginTop:2 }}>Private Banking · Platinum</div>
+</div>
+</div>
+</div>
+
+```
+    <nav style={{ flex:1, padding:"14px 10px", overflowY:"auto" }}>
+      <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.2)", letterSpacing:1.4, padding:"6px 12px 10px" }}>MAIN MENU</div>
+      {items.map(it => (
+        <button key={it.id} className={"dmn"+(page===it.id?" on":"")}
+          onClick={()=>{setPage(it.id);onClose();}}>
+          <span style={{ fontSize:19, width:26, textAlign:"center" }}>{it.icon}</span>
+          <span style={{ flex:1 }}>{it.label}</span>
+          {it.locked && <span style={{ fontSize:13 }}>🔒</span>}
+        </button>
+      ))}
+    </nav>
+
+    <div style={{ padding:"14px 10px", borderTop:"1px solid rgba(255,255,255,.06)" }}>
+      <button className="dmn" style={{ color:"#f87171" }} onClick={onSignOut}>
+        <span style={{ fontSize:19, width:26, textAlign:"center" }}>⏻</span> Sign Out
+      </button>
+    </div>
+  </div>
+</>
+```
+
+);
+}
+
+// ─── HAMBURGER ──────────────────────────────────────────────────────
+function Ham({ onClick }) {
+return (
+<button className="ham" onClick={onClick}>
+<span className=“hline” style={{ width:18 }} />
+<span className=“hline” style={{ width:13, opacity:.6 }} />
+<span className=“hline” style={{ width:18 }} />
+</button>
+);
+}
+
+// ─── PAGE HEADER ────────────────────────────────────────────────────
+function PageHeader({ title, onMenu }) {
+return (
+<div style={{ display:“flex”, alignItems:“center”, gap:14, padding:“52px 20px 22px” }}>
+<Ham onClick={onMenu} />
+<h1 style={{ color:”#fff”, fontSize:21, fontWeight:800, flex:1 }}>{title}</h1>
+</div>
+);
+}
+
+// ─── MAIN APP ────────────────────────────────────────────────────────
+export default function App() {
+const [auth, setAuth] = useState(“login”);
+const [page, setPage] = useState(“Home”);
+const [drawer, setDrawer] = useState(false);
+const [accIdx, setAccIdx] = useState(0);
+const [hideB, setHideB] = useState(false);
+const [sendAmt, setSendAmt] = useState(””);
+const [sendTo, setSendTo] = useState(””);
+const [sent, setSent] = useState(false);
+const [topUp, setTopUp] = useState(false);
+const [receive, setReceive] = useState(false);
+const [txDetail, setTxDetail] = useState(null);
+const [sendFrom, setSendFrom] = useState(0);
+
+if (auth===“login”) return <LoginScreen onNext={()=>setAuth(“security”)} />;
+if (auth===“security”) return <SecurityScreen onSuccess={()=>setAuth(“app”)} />;
+
+const acc = ACCOUNTS[accIdx];
+const total = ACCOUNTS.reduce((s,a)=>s+a.balance,0);
+
+const handleSend = () => {
+const amt = parseFloat(sendAmt);
+if (!sendTo || isNaN(amt) || amt<=0) return;
+setSent(true);
+setTimeout(()=>{setSent(false);setSendAmt(””);setSendTo(””);}, 3500);
+};
+
+const NAV = [
+{ id:“Activity”, icon:“📊”, label:“Activity” },
+{ id:“Transfer”, icon:“✈️”, label:“Send” },
+{ id:“Home”,     icon:“🏠”, label:“Home” },
+{ id:“Cards”,    icon:“💳”, label:“Cards” },
+{ id:“Profile”,  icon:“👤”, label:“Profile” },
+];
+
+return (
+<div className="shell">
+<style>{G}</style>
+
+```
+  <Drawer open={drawer} onClose={()=>setDrawer(false)} page={page} setPage={setPage}
+    onSignOut={()=>{setAuth("login");setPage("Home");setDrawer(false);}} />
+
+  {/* ══════════════════════════════════════════
+      HOME
+  ══════════════════════════════════════════ */}
+  {page==="Home" && (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:96 }} className="fu">
+      {/* Header */}
+      <div style={{ padding:"52px 20px 18px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <Ham onClick={()=>setDrawer(true)} />
+          <div>
+            <div style={{ color:"#3a5080", fontSize:12, fontWeight:600 }}>{greeting()} 👋</div>
+            <div style={{ color:"#fff", fontSize:17, fontWeight:800, marginTop:1 }}>{USER.name}</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={()=>setPage("Support")} style={{ width:40, height:40, background:"rgba(255,255,255,.07)", borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", fontSize:17 }}>💬</button>
+          <button style={{ width:40, height:40, background:"rgba(255,255,255,.07)", borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", fontSize:17, position:"relative" }}>
+            🔔
+            <span style={{ position:"absolute", top:7, right:8, width:8, height:8, background:"#4a90f7", borderRadius:"50%", border:"2px solid #0c1220" }} />
+          </button>
+        </div>
+      </div>
+
+      {/* Balance card */}
+      <div className="bal-card sc" style={{ background:`linear-gradient(140deg,${acc.color1},${acc.color2})` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+          <div>
+            <div style={{ color:"rgba(255,255,255,.65)", fontSize:10, fontWeight:700, letterSpacing:1.2 }}>NOVABANQUE</div>
+            <div style={{ color:"rgba(255,255,255,.85)", fontSize:13, fontWeight:500, marginTop:3 }}>{USER.name}</div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ color:"rgba(255,255,255,.65)", fontSize:10, fontWeight:700, letterSpacing:1 }}>{acc.type.toUpperCase()}</div>
+            <div style={{ color:"rgba(255,255,255,.85)", fontSize:12, fontFamily:"'DM Mono',monospace", marginTop:3 }}>•••• {acc.number}</div>
+          </div>
+        </div>
+
+        <div style={{ textAlign:"center", padding:"16px 0 12px" }}>
+          <div style={{ color:"rgba(255,255,255,.6)", fontSize:13, marginBottom:8, fontWeight:500 }}>Available Balance</div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
+            <span style={{ color:"#fff", fontSize:32, fontWeight:800, fontFamily:"'DM Mono',monospace", letterSpacing:"-1px" }}>
+              {hideB ? "• • • • • •" : fmt(acc.balance)}
+            </span>
+            <button onClick={()=>setHideB(v=>!v)} style={{ background:"rgba(255,255,255,.18)", border:"none", borderRadius:9, padding:"5px 9px", cursor:"pointer", fontSize:14, color:"#fff", lineHeight:1 }}>
+              {hideB?"👁":"🙈"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <span style={{ width:8, height:8, background:"#4ade80", borderRadius:"50%", display:"inline-block", boxShadow:"0 0 10px #4ade80" }} />
+            <span style={{ color:"rgba(255,255,255,.75)", fontSize:13, fontWeight:500 }}>Active</span>
+          </div>
+          <span style={{ color:"rgba(255,255,255,.5)", fontSize:12 }}>Mar 11, 2026 · 11:43</span>
+        </div>
+      </div>
+
+      {/* Dots */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, margin:"16px 0" }}>
+        <div style={{ display:"flex", gap:7 }}>
+          {ACCOUNTS.map((_,i)=>(
+            <button key={i} onClick={()=>setAccIdx(i)} style={{ width:i===accIdx?22:8, height:8, borderRadius:4, background:i===accIdx?"#4a90f7":"rgba(255,255,255,.18)", border:"none", cursor:"pointer", transition:"all .25s", padding:0 }} />
+          ))}
+        </div>
+        <div style={{ color:"#3a5080", fontSize:12, fontWeight:500 }}>Tap to switch accounts</div>
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ margin:"0 18px 22px", background:"rgba(255,255,255,.03)", borderRadius:24, padding:"18px 10px", border:"1px solid rgba(255,255,255,.06)", display:"flex" }}>
+        <button className="qa" onClick={()=>setTopUp(true)}>
+          <div className="qa-icon" style={{ background:"#f59e0b", boxShadow:"0 8px 22px rgba(245,158,11,.45)" }}>➕</div>
+          <span className="qa-lbl">Top Up</span>
+        </button>
+        <button className="qa" onClick={()=>setPage("Transfer")}>
+          <div className="qa-icon" style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.1)" }}>
+            ✈️
+            <span style={{ position:"absolute", top:-4, right:-4, width:17, height:17, background:"#f59e0b", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, boxShadow:"0 2px 8px rgba(0,0,0,.4)" }}>🔒</span>
+          </div>
+          <span className="qa-lbl">Send</span>
+        </button>
+        <button className="qa" onClick={()=>setReceive(true)}>
+          <div className="qa-icon" style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.1)" }}>⬇️</div>
+          <span className="qa-lbl">Receive</span>
+        </button>
+        <button className="qa" onClick={()=>setPage("Activity")}>
+          <div className="qa-icon" style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.1)" }}>⊞</div>
+          <span className="qa-lbl">More</span>
+        </button>
+      </div>
+
+      {/* Net Worth summary */}
+      <div style={{ margin:"0 18px 22px", background:"rgba(74,144,247,.07)", borderRadius:20, padding:"18px 20px", border:"1px solid rgba(74,144,247,.15)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div>
+          <div style={{ color:"#3a5080", fontSize:12, fontWeight:600, marginBottom:4 }}>Total Net Worth</div>
+          <div style={{ color:"#fff", fontSize:22, fontWeight:800, fontFamily:"'DM Mono',monospace", letterSpacing:"-1px" }}>{fmt(total)}</div>
+        </div>
+        <div style={{ textAlign:"right" }}>
+          <span style={{ background:"rgba(74,222,128,.15)", color:"#4ade80", fontSize:13, fontWeight:700, padding:"5px 12px", borderRadius:20 }}>▲ +3.2%</span>
+          <div style={{ color:"#3a5080", fontSize:11, marginTop:5 }}>This month</div>
+        </div>
+      </div>
+
+      {/* Recent transactions */}
+      <div style={{ padding:"0 18px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <span className="sec">Recent Activity</span>
+          <button onClick={()=>setPage("Activity")} style={{ color:"#4a90f7", fontSize:13, fontWeight:700, background:"none", border:"none", cursor:"pointer" }}>See All ›</button>
+        </div>
+        <div className="dk">
+          {TRANSACTIONS.slice(0,5).map(tx=>(
+            <div key={tx.id} className="trow" onClick={()=>setTxDetail(tx)}>
+              <div className="ticon">{tx.icon}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ color:"#e0eaff", fontSize:14, fontWeight:700 }}>{tx.name}</div>
+                <div style={{ color:"#3a5080", fontSize:12, marginTop:3 }}>{tx.cat} · {tx.date}</div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ color:tx.amount>0?"#4ade80":"#e0eaff", fontSize:14, fontWeight:800, fontFamily:"'DM Mono',monospace" }}>
+                  {tx.amount>0?"+":""}{fmt(tx.amount)}
+                </div>
+                <div style={{ color:"#3a5080", fontSize:11, marginTop:2 }}>{tx.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ══════════════════════════════════════════
+      ACTIVITY
+  ══════════════════════════════════════════ */}
+  {page==="Activity" && (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:96 }} className="fu">
+      <PageHeader title="Activity" onMenu={()=>setDrawer(true)} />
+
+      <div style={{ padding:"0 18px 20px" }}>
+        {/* Income / Expense cards */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:22 }}>
+          {[
+            { label:"Income",   value:fmt(60200), color:"#4ade80", icon:"📥", bg:"rgba(74,222,128,.1)", border:"rgba(74,222,128,.18)" },
+            { label:"Expenses", value:fmt(13011), color:"#f87171", icon:"📤", bg:"rgba(248,113,113,.1)", border:"rgba(248,113,113,.18)" },
+          ].map((s,i)=>(
+            <div key={i} style={{ background:s.bg, borderRadius:20, padding:"18px 16px", border:"1px solid "+s.border }}>
+              <div style={{ fontSize:24, marginBottom:10 }}>{s.icon}</div>
+              <div style={{ color:s.color, fontSize:20, fontWeight:800, fontFamily:"'DM Mono',monospace", letterSpacing:"-1px" }}>{s.value}</div>
+              <div style={{ color:"#3a5080", fontSize:12, marginTop:4, fontWeight:600 }}>{s.label} · March</div>
+            </div>
+          ))}
+        </div>
+
+        <span className="sec" style={{ display:"block", marginBottom:14 }}>All Transactions</span>
+        <div className="dk">
+          {TRANSACTIONS.map(tx=>(
+            <div key={tx.id} className="trow" onClick={()=>setTxDetail(tx)}>
+              <div className="ticon">{tx.icon}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ color:"#e0eaff", fontSize:14, fontWeight:700 }}>{tx.name}</div>
+                <div style={{ color:"#3a5080", fontSize:12, marginTop:3 }}>{tx.date} · {tx.time}</div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ color:tx.amount>0?"#4ade80":"#e0eaff", fontSize:14, fontWeight:800, fontFamily:"'DM Mono',monospace" }}>
+                  {tx.amount>0?"+":""}{fmt(tx.amount)}
+                </div>
+                <span className="pill" style={{ background:"rgba(255,255,255,.07)", color:"#3a5080", marginTop:4, fontSize:10 }}>{tx.cat}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ══════════════════════════════════════════
+      TRANSFER — LOCKED: CONTACT SUPPORT
+  ══════════════════════════════════════════ */}
+  {page==="Transfer" && (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:96 }} className="fu">
+      <PageHeader title="Send Money" onMenu={()=>setDrawer(true)} />
+
+      <div style={{ padding:"0 18px" }}>
+        {/* Big lock illustration */}
+        <div style={{ textAlign:"center", padding:"20px 0 30px" }}>
+          <div style={{ width:100, height:100, background:"linear-gradient(135deg,#1a2540,#1e3a70)", borderRadius:32, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 22px", fontSize:44, boxShadow:"0 16px 48px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset", border:"1px solid rgba(74,144,247,.2)" }}>🔒</div>
+          <h2 style={{ color:"#fff", fontSize:24, fontWeight:800, marginBottom:10 }}>Feature Locked</h2>
+          <p style={{ color:"#3a5080", fontSize:15, lineHeight:1.7, maxWidth:300, margin:"0 auto" }}>
+            Send Money is currently restricted on your account. Please contact our support team to activate this feature.
+          </p>
+        </div>
+
+        {/* Info card */}
+        <div className="dk" style={{ marginBottom:20, border:"1px solid rgba(74,144,247,.15)" }}>
+          {[
+            ["Feature", "Send Money / Transfers"],
+            ["Status",  "Locked — Requires Activation"],
+            ["Action",  "Contact Support to Unlock"],
+          ].map(([k,v],i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 0", borderBottom:i<2?"1px solid rgba(255,255,255,.05)":"none" }}>
+              <span style={{ color:"#3a5080", fontSize:14 }}>{k}</span>
+              <span style={{ color: i===1?"#f59e0b": i===2?"#4a90f7":"#c8d8ff", fontSize:14, fontWeight:700 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Contact support box */}
+        <div style={{ background:"rgba(74,144,247,.08)", borderRadius:22, padding:"24px 22px", marginBottom:22, border:"1px solid rgba(74,144,247,.2)", textAlign:"center" }}>
+          <div style={{ fontSize:30, marginBottom:12 }}>📧</div>
+          <div style={{ color:"#7aa8f7", fontSize:12, fontWeight:700, letterSpacing:.8, marginBottom:8 }}>SUPPORT EMAIL</div>
+          <div style={{ color:"#fff", fontSize:17, fontWeight:800, marginBottom:4, wordBreak:"break-all" }}>{SUPPORT_EMAIL}</div>
+          <div style={{ color:"#3a5080", fontSize:13, marginTop:6 }}>Our team responds within 24 hours</div>
+        </div>
+
+        {/* Copy email button */}
+        <button className="bigbtn" style={{ background:"linear-gradient(135deg,#1252c9,#4a90f7)", color:"#fff", marginBottom:12, boxShadow:"0 8px 28px rgba(18,82,201,.45)" }}
+          onClick={()=>{ navigator.clipboard?.writeText(SUPPORT_EMAIL); }}>
+          📋 Copy Support Email
+        </button>
+
+        <button className="bigbtn" style={{ background:"rgba(255,255,255,.07)", color:"#7a8fb0", border:"1.5px solid rgba(255,255,255,.1)", fontSize:15 }}
+          onClick={()=>setPage("Support")}>
+          💬 Open Support Chat
+        </button>
+
+        <p style={{ color:"#2a3a5a", fontSize:12, textAlign:"center", marginTop:18, lineHeight:1.7 }}>
+          Reference your account number when contacting support for faster assistance.
+        </p>
+      </div>
+    </div>
+  )}
+
+  {/* ══════════════════════════════════════════
+      CARDS
+  ══════════════════════════════════════════ */}
+  {page==="Cards" && (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:96 }} className="fu">
+      <PageHeader title="My Cards" onMenu={()=>setDrawer(true)} />
+      <div style={{ padding:"0 18px" }}>
+        {[
+          { type:"Visa Infinite",    last4:"4821", exp:"09/29", bg:"linear-gradient(140deg,#0d1f5c,#1a6cf7)", limit:50000, used:10712 },
+          { type:"Mastercard World", last4:"9034", exp:"12/28", bg:"linear-gradient(140deg,#4a0d00,#f97316)", limit:25000, used:3840 },
+        ].map((card,i)=>(
+          <div key={i} style={{ marginBottom:24 }}>
+            {/* Card visual */}
+            <div style={{ background:card.bg, borderRadius:26, padding:"28px 26px", position:"relative", overflow:"hidden", boxShadow:"0 16px 48px rgba(0,0,0,.45)", marginBottom:16 }}>
+              <div style={{ position:"absolute", right:-50, top:-50, width:200, height:200, background:"rgba(255,255,255,.07)", borderRadius:"50%" }} />
+              <div style={{ position:"absolute", left:-30, bottom:-60, width:160, height:160, background:"rgba(255,255,255,.04)", borderRadius:"50%" }} />
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:30 }}>
+                <span style={{ color:"#fff", fontWeight:800, fontSize:16 }}>{card.type}</span>
+                <span className="pill" style={{ background:"rgba(255,255,255,.15)", color:"#fff", letterSpacing:.8 }}>Private</span>
+              </div>
+              <div style={{ fontFamily:"'DM Mono',monospace", color:"#fff", fontSize:19, letterSpacing:4, marginBottom:26 }}>
+                **** **** **** {card.last4}
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between" }}>
+                <div>
+                  <div style={{ color:"rgba(255,255,255,.45)", fontSize:9, letterSpacing:1.8, marginBottom:4 }}>CARD HOLDER</div>
+                  <div style={{ color:"#fff", fontSize:13, fontWeight:600 }}>{USER.name}</div>
+                </div>
+                <div>
+                  <div style={{ color:"rgba(255,255,255,.45)", fontSize:9, letterSpacing:1.8, marginBottom:4 }}>EXPIRES</div>
+                  <div style={{ color:"#fff", fontSize:13, fontFamily:"'DM Mono',monospace" }}>{card.exp}</div>
+                </div>
+                <div>
+                  <div style={{ color:"rgba(255,255,255,.45)", fontSize:9, letterSpacing:1.8, marginBottom:4 }}>CVV</div>
+                  <div style={{ color:"#fff", fontSize:13, fontFamily:"'DM Mono',monospace" }}>•••</div>
+                </div>
+              </div>
+            </div>
+            {/* Card details */}
+            <div className="dk">
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
+                <span style={{ color:"#3a5080", fontSize:13 }}>Credit Used</span>
+                <span style={{ color:"#fff", fontSize:13, fontWeight:700 }}>{fmt(card.used)} <span style={{ color:"#2a3a5a" }}>/ {fmt(card.limit)}</span></span>
+              </div>
+              <div style={{ background:"rgba(255,255,255,.08)", borderRadius:8, height:7, marginBottom:8 }}>
+                <div style={{ background:"linear-gradient(90deg,#1252c9,#4a90f7)", borderRadius:8, height:7, width:((card.used/card.limit)*100)+"%" }} />
+              </div>
+              <div style={{ color:"#3a5080", fontSize:12, marginBottom:18 }}>{((card.used/card.limit)*100).toFixed(1)}% utilised · {fmt(card.limit-card.used)} available</div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button className="ghost-btn" style={{ flex:1 }}>❄️ Freeze</button>
+                <button className="ghost-btn" style={{ flex:1, background:"linear-gradient(135deg,#1252c9,#4a90f7)", color:"#fff", border:"none" }}>💳 Pay Now</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {/* ══════════════════════════════════════════
+      PROFILE
+  ══════════════════════════════════════════ */}
+  {page==="Profile" && (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:96 }} className="fu">
+      <PageHeader title="Profile" onMenu={()=>setDrawer(true)} />
+      <div style={{ padding:"0 18px" }}>
+        {/* Avatar */}
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ width:84, height:84, background:"linear-gradient(135deg,#1252c9,#4a90f7)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", color:"#fff", fontWeight:800, fontSize:26, boxShadow:"0 10px 32px rgba(18,82,201,.55)" }}>EC</div>
+          <div style={{ color:"#fff", fontSize:20, fontWeight:800 }}>{USER.name}</div>
+          <div style={{ color:"#3a5080", fontSize:13, marginTop:4 }}>Private Banking · Platinum Member</div>
+          <div style={{ marginTop:10, display:"flex", justifyContent:"center", gap:8 }}>
+            <span className="tag" style={{ background:"rgba(74,222,128,.12)", color:"#4ade80", border:"1px solid rgba(74,222,128,.2)" }}>✅ Verified</span>
+            <span className="tag" style={{ background:"rgba(245,158,11,.12)", color:"#fbbf24", border:"1px solid rgba(245,158,11,.2)" }}>⭐ Platinum</span>
+          </div>
+        </div>
+
+        {[
+          { title:"Personal Info", items:[
+            ["Full Name", USER.name],
+            ["Email", CREDENTIALS.email],
+            ["Phone", "+1 (212) 555-0199"],
+            ["Member Since", "January 2019"],
+          ]},
+          { title:"Security", items:[
+            ["Two-Factor Auth", "Enabled ✅"],
+            ["Security Questions", "5 configured ✅"],
+            ["Biometric Login", "Face ID On"],
+            ["Last Login", "Mar 11, 2026"],
+          ]},
+          { title:"Preferences", items:[
+            ["Currency", "USD ($)"],
+            ["Language", "English (US)"],
+            ["Timezone", "EST (UTC-5)"],
+            ["Notifications", "All enabled"],
+          ]},
+        ].map(sec=>(
+          <div key={sec.title} className="dk" style={{ marginBottom:14 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:"#3a5080", letterSpacing:1.2, marginBottom:14 }}>{sec.title.toUpperCase()}</div>
+            {sec.items.map(([k,v],j)=>(
+              <div key={j} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:j<sec.items.length-1?"1px solid rgba(255,255,255,.05)":"none" }}>
+                <span style={{ color:"#3a5080", fontSize:14 }}>{k}</span>
+                <span style={{ color:"#c8d8ff", fontSize:14, fontWeight:600 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <button onClick={()=>{setAuth("login");setPage("Home");}}
+          style={{ width:"100%", background:"rgba(248,113,113,.1)", border:"1.5px solid rgba(248,113,113,.2)", borderRadius:18, padding:16, color:"#f87171", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"'Sora',sans-serif", marginTop:4 }}>
+          ⏻ Sign Out
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* ══════════════════════════════════════════
+      SUPPORT
+  ══════════════════════════════════════════ */}
+  {page==="Support" && (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:96 }} className="fu">
+      <PageHeader title="Support" onMenu={()=>setDrawer(true)} />
+      <div style={{ padding:"0 18px" }}>
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ width:80, height:80, background:"linear-gradient(135deg,#065f46,#10b981)", borderRadius:26, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:36, boxShadow:"0 10px 32px rgba(16,185,129,.35)" }}>💬</div>
+          <h2 style={{ color:"#fff", fontSize:22, fontWeight:800, marginBottom:6 }}>We're Here to Help</h2>
+          <p style={{ color:"#3a5080", fontSize:14, lineHeight:1.6 }}>Our dedicated private banking support team is available to assist you.</p>
+        </div>
+
+        {/* Contact card */}
+        <div style={{ background:"rgba(16,185,129,.08)", borderRadius:22, padding:"24px 22px", marginBottom:18, border:"1px solid rgba(16,185,129,.2)", textAlign:"center" }}>
+          <div style={{ color:"#10b981", fontSize:12, fontWeight:700, letterSpacing:.8, marginBottom:10 }}>DIRECT SUPPORT EMAIL</div>
+          <div style={{ color:"#fff", fontSize:18, fontWeight:800, marginBottom:6, wordBreak:"break-all" }}>{SUPPORT_EMAIL}</div>
+          <div style={{ color:"#3a5080", fontSize:13 }}>Responses within 24 hours · Mon–Fri</div>
+        </div>
+
+        <button className="bigbtn" style={{ background:"linear-gradient(135deg,#065f46,#10b981)", color:"#fff", marginBottom:12, boxShadow:"0 8px 28px rgba(16,185,129,.35)" }}
+          onClick={()=>{ navigator.clipboard?.writeText(SUPPORT_EMAIL); }}>
+          📋 Copy Email Address
+        </button>
+
+        <div className="dk" style={{ marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:"#3a5080", letterSpacing:1.2, marginBottom:14 }}>COMMON TOPICS</div>
+          {[
+            ["🔒", "Unlock Send Money feature", "Transfer"],
+            ["💳", "Card issues or disputes", "Cards"],
+            ["🔐", "Security & account access", "Profile"],
+            ["💰", "Account limits & fees", "Home"],
+          ].map(([icon,label,pg],i)=>(
+            <button key={i} onClick={()=>setPage(pg)} style={{ display:"flex", alignItems:"center", gap:13, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"13px 0", borderBottom:i<3?"1px solid rgba(255,255,255,.05)":"none", fontFamily:"'Sora',sans-serif" }}>
+              <div style={{ width:40, height:40, background:"rgba(255,255,255,.07)", borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{icon}</div>
+              <span style={{ color:"#c8d8ff", fontSize:14, fontWeight:600, flex:1, textAlign:"left" }}>{label}</span>
+              <span style={{ color:"#3a5080", fontSize:18 }}>›</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ── BOTTOM NAV ── */}
+  <div className="bnav">
+    {NAV.map(item=>(
+      <button key={item.id} className={"bnav-btn"+(page===item.id?" on":"")} onClick={()=>setPage(item.id)}>
+        <span className="bnav-icon">{item.icon}</span>
+        <span className="bnav-lbl">{item.label}</span>
+      </button>
+    ))}
+  </div>
+
+  {/* ══════════════════════════════════════════
+      MODALS
+  ══════════════════════════════════════════ */}
+
+  {/* Top Up */}
+  {topUp && (
+    <div className="modal-sheet" onClick={()=>setTopUp(false)}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <h3 style={{ color:"#fff", fontSize:20, fontWeight:800, marginBottom:5 }}>Top Up Account</h3>
+        <p style={{ color:"#3a5080", fontSize:13, marginBottom:24 }}>Add funds to your account instantly.</p>
+        <div style={{ marginBottom:18 }}>
+          <label className="fl">TO ACCOUNT</label>
+          <select className="fi" style={{ appearance:"none" }}>
+            {ACCOUNTS.map(a=><option key={a.id}>{a.name} — {fmt(a.balance)}</option>)}
+          </select>
+        </div>
+        <div style={{ marginBottom:18 }}>
+          <label className="fl">AMOUNT</label>
+          <input className="fi" placeholder="$0.00" type="number" />
+        </div>
+        <div style={{ marginBottom:24 }}>
+          <label className="fl">PAYMENT METHOD</label>
+          <select className="fi" style={{ appearance:"none" }}>
+            <option>Bank Transfer</option><option>Debit Card</option><option>Wire Transfer</option>
+          </select>
+        </div>
+        <button className="bigbtn" style={{ background:"#f59e0b", color:"#1a0e00", boxShadow:"0 8px 24px rgba(245,158,11,.4)" }} onClick={()=>setTopUp(false)}>
+          ➕ Confirm Top Up
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* Receive */}
+  {receive && (
+    <div className="modal-sheet" onClick={()=>setReceive(false)}>
+      <div className="sheet" style={{ textAlign:"center" }} onClick={e=>e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div style={{ fontSize:40, marginBottom:14 }}>⬇️</div>
+        <h3 style={{ color:"#fff", fontSize:20, fontWeight:800, marginBottom:6 }}>Receive Money</h3>
+        <p style={{ color:"#3a5080", fontSize:13, marginBottom:24 }}>Share your account details with the sender.</p>
+        <div className="dk" style={{ marginBottom:20, textAlign:"left" }}>
+          {[
+            ["Account Holder", USER.name],
+            ["Account Number", "•••• •••• •••• " + acc.number],
+            ["Account Type", acc.type],
+            ["Bank", "NovaBanque Private"],
+          ].map(([k,v],i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"12px 0", borderBottom:i<3?"1px solid rgba(255,255,255,.05)":"none" }}>
+              <span style={{ color:"#3a5080", fontSize:13 }}>{k}</span>
+              <span style={{ color:"#c8d8ff", fontSize:13, fontWeight:700, fontFamily:"'DM Mono',monospace" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <button className="bigbtn" style={{ background:"linear-gradient(135deg,#1252c9,#4a90f7)", color:"#fff", boxShadow:"0 8px 24px rgba(18,82,201,.4)" }}
+          onClick={()=>{ navigator.clipboard?.writeText(USER.name + " · " + acc.number); setReceive(false); }}>
+          📋 Copy Account Details
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* Transaction Detail */}
+  {txDetail && (
+    <div className="modal-sheet" onClick={()=>setTxDetail(null)}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div style={{ textAlign:"center", marginBottom:22 }}>
+          <div style={{ fontSize:48, marginBottom:10 }}>{txDetail.icon}</div>
+          <div style={{ color:"#fff", fontSize:19, fontWeight:800 }}>{txDetail.name}</div>
+          <div style={{ color:txDetail.amount>0?"#4ade80":"#f87171", fontSize:30, fontWeight:800, fontFamily:"'DM Mono',monospace", marginTop:6 }}>
+            {txDetail.amount>0?"+":""}{fmt(txDetail.amount)}
+          </div>
+        </div>
+        <div className="dk" style={{ marginBottom:20 }}>
+          {[
+            ["Date",      txDetail.date],
+            ["Time",      txDetail.time],
+            ["Category",  txDetail.cat],
+            ["Status",    "Completed ✅"],
+            ["Reference", "NOV-" + (txDetail.id * 100391)],
+          ].map(([k,v],i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"12px 0", borderBottom:i<4?"1px solid rgba(255,255,255,.05)":"none" }}>
+              <span style={{ color:"#3a5080", fontSize:14 }}>{k}</span>
+              <span style={{ color:"#c8d8ff", fontSize:14, fontWeight:600 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <button className="bigbtn ghost-btn" style={{ width:"100%" }} onClick={()=>setTxDetail(null)}>Close</button>
+      </div>
+    </div>
+  )}
+</div>
+```
+
+);
+}
